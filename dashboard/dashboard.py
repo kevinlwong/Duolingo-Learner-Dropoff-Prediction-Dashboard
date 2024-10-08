@@ -7,12 +7,6 @@ import altair as alt
 # Set the page layout to wide, but control the max width using custom CSS
 st.set_page_config(page_title="Duolingo Learner Dashboard", layout="wide")
 
-[theme]
-primaryColor = "#0000FF"
-backgroundColor = "#FFFFFF"
-secondaryBackgroundColor = "#F0F0F0"
-textColor = "#000000"
-
 # CSS for customizing scrollbar
 st.markdown(
     """

@@ -1,6 +1,9 @@
+
 [theme]
-primaryColor="#FF4B4B"
-backgroundColor="#FFFFFF"
-secondaryBackgroundColor="#F0F2F6"
-textColor="#31333F"
-font="sans serif"
+base="light"
+primaryColor="#FF4B4B"            # Accent color for buttons and active elements
+backgroundColor="#FFFFFF"         # Main background color
+secondaryBackgroundColor="#F0F2F6" # Sidebar and widget background color
+textColor="#31333F"               # Main text color
+font="sans serif"                 # Font style
+

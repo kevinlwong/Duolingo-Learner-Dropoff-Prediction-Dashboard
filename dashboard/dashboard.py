@@ -24,7 +24,7 @@ st.markdown(
 
 
 # Title for your dashboard
-st.title("Duolingo Learner Dashboard with Controlled Width")
+st.title("Duolingo Learner Dashboard")
 
 # Load your data (replace with actual data path)
 data_path = '../data/learner_data.csv'  # Use your dataset path
@@ -33,6 +33,8 @@ data = pd.read_csv(data_path)
 # Convert 'Last_Activity' to datetime format
 data['Last_Activity'] = pd.to_datetime(data['Last_Activity'])
 
+# sidebar image
+st.sidebar.image('../images/duolingo_wave.png', width=275)
 # Sidebar Filters
 st.sidebar.header("Filter Options")
 
@@ -73,98 +75,112 @@ else:
         filtered_data = filtered_data[filtered_data['Dropped_Off'] == 1]
 
     # ---- MAIN CONTENT ----
+    # Convert 'User_ID' to numeric format by removing the 'User_' prefix and changing to int
+    data['User_ID'] = data['User_ID'].str.extract('(\d+)').astype(int)
+
+    # Now 'User_ID' is purely numeric, so sorting will work correctly
+    data = data.sort_values(by='User_ID').reset_index(drop=True)
+
     # Show the filtered dataset
     st.write("Here is a snapshot of the learner data:")
-    st.dataframe(filtered_data)
+    # st.dataframe(filtered_data)
+    
+    st.dataframe(data)
+    # Convert 'User_ID' to a string to treat it as a categorical field
+    data['User_ID'] = data['User_ID'].astype(str)
 
+    # Explicitly sort 'User_ID' by the order they appear in the dataset
+    user_id_order = data['User_ID'].tolist()
+
+    # Filtered data (apply your filters as needed)
+    filtered_data = data  # Assuming you've applied any necessary filters before this
+    user_id_list = filtered_data['User_ID'].tolist()
+    every_fifth_user_id = user_id_list[::5]  # Slices list to every fifth element
     # First Row: Bar chart (Lessons Completed) and Pie chart (Drop-Off Status) with moderate width differences
-    col1, col2 = st.columns([1.5, 1])  # First column 1.5x wider than second
-
-    # Bar chart for Lessons Completed in col1
+    col1, col2 = st.columns([1.5 , 1])  
+    # 1. Bar Chart for Lessons Completed (in col1)
     with col1:
         st.subheader("Lessons Completed by Users")
-        fig, ax = plt.subplots(figsize=(8, 4))  # Adjust figure size to make it smaller
-        ax.bar(filtered_data['User_ID'], filtered_data['Lessons_Completed'])
-        ax.set_xlabel("User ID")
-        ax.set_ylabel("Lessons Completed")
-        ax.set_title("Lessons Completed by User")
-        ax.set_xticks(ax.get_xticks()[::10])  # Display every 10th user ID to reduce clutter
-        ax.set_xticklabels(ax.get_xticks(), rotation=45, ha='right')
-        st.pyplot(fig)
+        lessons_completed_chart = alt.Chart(filtered_data).mark_bar(color='#7AC70C').encode(
+            x=alt.X('User_ID:N', title='User ID', axis=alt.Axis(labelAngle=-45, values=every_fifth_user_id), sort=user_id_order),
+            y=alt.Y('Lessons_Completed:Q', title='Lessons Completed'),
+            tooltip=['User_ID', 'Lessons_Completed']
+        ).properties(
+            width=350,
+            height=300,
+            title='Lessons Completed by User'
+        )
+        st.altair_chart(lessons_completed_chart, use_container_width=True)
 
-    # Pie chart for Drop-Off Status in col2
+    # 2. Pie Chart for Drop-Off Status (in col2)
     with col2:
         st.subheader("Drop-Off Status of Learners")
-        fig, ax = plt.subplots(figsize=(4, 5))  # Adjust pie chart size
-        drop_off_counts = filtered_data['Dropped_Off'].value_counts()
-        # ax.pie(drop_off_counts, labels=['Active', 'Dropped Off'], autopct='%1.1f%%', startangle=90, colors=['green', 'red'])
-        # ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
-        # ax.set_title("Proportion of Users Dropped Off")
-        # st.pyplot(fig)
-        # Dynamically set labels based on available data
-        labels = []
-        colors = []
+        drop_off_counts = filtered_data['Dropped_Off'].value_counts().reset_index()
+        drop_off_counts.columns = ['Dropped_Off', 'Count']
+        drop_off_counts['Label'] = drop_off_counts['Dropped_Off'].map({0: "Active", 1: "Dropped Off"})
+        drop_off_counts['Color'] = drop_off_counts['Dropped_Off'].map({0: "green", 1: "red"})
 
-        if 0 in drop_off_counts.index:
-            labels.append("Active")
-            colors.append("green")
-        if 1 in drop_off_counts.index:
-            labels.append("Dropped Off")
-            colors.append("red")
+        pie_chart = alt.Chart(drop_off_counts).mark_arc(innerRadius=50).encode(
+            theta=alt.Theta(field="Count", type="quantitative"),
+            color=alt.Color(field="Label", type="nominal", scale=alt.Scale(domain=["Active", "Dropped Off"], range=["green", "red"])),
+            tooltip=['Label', 'Count']
+        ).properties(
+            width=200,
+            height=300,
+            title="Proportion of Users Dropped Off"
+        )
+        st.altair_chart(pie_chart, use_container_width=True)
 
-        # Draw the pie chart with dynamic labels and colors
-        fig, ax = plt.subplots()
-        ax.pie(drop_off_counts, labels=labels, autopct='%1.1f%%', startangle=90, colors=colors)
-        ax.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
-        ax.set_title("Proportion of Users Dropped Off")
-        st.pyplot(fig)
+    # Define the second row of columns
+    col3, col4 = st.columns(2)
 
-    # Second Row: Line chart (User Retention) and Histogram (Quiz Scores) with equal width
-    col3, col4 = st.columns([1, 1])  # Equal column widths
-
-    # Line chart for User Retention in col3
+    # 3. Line Chart for User Retention Over Time (in col3)
     with col3:
         st.subheader("User Retention Over Time")
-        user_retention = filtered_data.groupby(filtered_data['Last_Activity'].dt.to_period("M")).size()
-        fig, ax = plt.subplots(figsize=(6, 3))  # Adjust size to reduce width
-        ax.plot(user_retention.index.to_timestamp(), user_retention.values)
-        ax.set_xlabel("Month")
-        ax.set_ylabel("Number of Users")
-        ax.set_title("User Retention Over Time")
-        ax.xaxis.set_major_formatter(plt.matplotlib.dates.DateFormatter('%B \n%Y'))
-        plt.xticks(rotation=45, ha='right')
-        st.pyplot(fig)
+        user_retention = filtered_data.groupby(filtered_data['Last_Activity'].dt.to_period("M")).size().reset_index()
+        user_retention.columns = ['Month', 'Count']
+        user_retention['Month'] = user_retention['Month'].dt.to_timestamp()
 
-    # Histogram for Quiz Scores in col4
+        retention_chart = alt.Chart(user_retention).mark_line(point=True, color='#7AC70C').encode(
+            x=alt.X('Month:T', title="Month"),
+            y=alt.Y('Count:Q', title="Number of Users"),
+            tooltip=['Month', 'Count']
+        ).properties(
+            width=350,
+            height=300,
+            title="User Retention Over Time"
+        )
+        st.altair_chart(retention_chart, use_container_width=True)
+
+    # 4. Histogram for Quiz Scores (in col4)
     with col4:
         st.subheader("Quiz Scores Distribution")
-        fig, ax = plt.subplots(figsize=(6, 4))  # Adjust figure size to make it smaller
-        ax.hist(filtered_data['Quiz_Scores'], bins=10, color='blue', alpha=0.7)
-        ax.set_xlabel("Quiz Scores")
-        ax.set_ylabel("Number of Users")
-        ax.set_title("Distribution of Quiz Scores")
-        st.pyplot(fig)
+        quiz_histogram = alt.Chart(filtered_data).mark_bar(color='#7AC70C').encode(
+            x=alt.X('Quiz_Scores:Q', bin=alt.Bin(maxbins=10), title="Quiz Scores"),
+            y=alt.Y('count()', title="Number of Users"),
+            tooltip=['Quiz_Scores', 'count()']
+        ).properties(
+            width=350,
+            height=300,
+            title="Distribution of Quiz Scores"
+        )
+        st.altair_chart(quiz_histogram, use_container_width=True)
 
-    # Third Row: Metrics (with equal widths)
-    col5, col6, col7 = st.columns([1, 1, 1])  # All columns equal width
+    # Define a third row for metrics (in three equal-width columns)
+    col5, col6, col7 = st.columns(3)
 
-    # Metric 1: Average Quiz Score
+    # Metrics
     with col5:
         avg_quiz_score = filtered_data['Quiz_Scores'].mean()
         st.metric(label="Average Quiz Score", value=f"{avg_quiz_score:.2f}")
 
-    # Metric 2: Drop-Off Rate
     with col6:
         drop_off_rate = filtered_data['Dropped_Off'].mean() * 100
         st.metric(label="Overall Drop-Off Rate", value=f"{drop_off_rate:.2f}%")
 
-    # Metric 3: Average Lessons Completed
     with col7:
         avg_lessons_completed = filtered_data['Lessons_Completed'].mean()
         st.metric(label="Average Lessons Completed", value=f"{avg_lessons_completed:.2f}")
-
-
-
 
 # -------------------- NEW SECTION FOR ML FEATURES --------------------
 st.header("ML Features Section")
@@ -228,7 +244,7 @@ with col2:
     bar_chart = alt.Chart(metrics_data).mark_bar().encode(
         x=alt.X('Metrics', sort=None, title='Metrics'),
         y=alt.Y('Values', title='Average Values'),
-        color=alt.Color('Metrics', scale=alt.Scale(scheme='tableau10')),
+        color=alt.Color('Metrics', scale=alt.Scale(scheme='viridis')),
         tooltip=['Metrics', 'Values']
     ).properties(
         width=300,
@@ -244,7 +260,7 @@ with col3:
     alt_bar_chart = alt.Chart(metrics_data).mark_bar().encode(
         x=alt.X('Metrics', sort=None, title='Metrics'),
         y=alt.Y('Values', title='Average Values'),
-        color=alt.Color('Metrics', scale=alt.Scale(scheme='tableau10')),
+        color=alt.Color('Metrics', scale=alt.Scale(scheme='greens')),
         tooltip=['Metrics', 'Values']
     ).properties(
         width=300,
@@ -257,7 +273,7 @@ with col4:
     scatter_chart = alt.Chart(filtered_ml_data).mark_circle(size=60).encode(
         x=alt.X('Lessons_Per_Week', title='Lessons Per Week'),
         y=alt.Y('Quiz_Scores', title='Quiz Scores'),
-        color=alt.Color('Dropped_Off:N', legend=alt.Legend(title="Drop-Off Status")),
+        color=alt.Color('Dropped_Off:N', legend=alt.Legend(title="Drop-Off Status"), scale=alt.Scale(scheme='tableau20')),
         tooltip=['Lessons_Per_Week', 'Quiz_Scores', 'Dropped_Off']
     ).properties(
         width=300,

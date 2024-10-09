@@ -24,7 +24,7 @@ st.markdown(
 
 
 # Title for your dashboard
-st.title("Duolingo Learner Dashboard")
+st.title("Duolingo Learner Dashboard with Mock Data")
 
 # Load your data (replace with actual data path)
 data_path = '../data/learner_data.csv'  # Use your dataset path

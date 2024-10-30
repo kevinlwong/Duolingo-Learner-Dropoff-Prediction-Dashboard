@@ -136,7 +136,7 @@ with tab2:
 
         # ---- MAIN CONTENT ----
         # Convert 'User_ID' to numeric format by removing the 'User_' prefix and changing to int
-        data['User_ID'] = data['User_ID'].str.extract('(\d+)').astype(int)
+        data['User_ID'] = data['User_ID'].str.extract(r'(\d+)').astype(int)
 
         # Now 'User_ID' is purely numeric, so sorting will work correctly
         data = data.sort_values(by='User_ID').reset_index(drop=True)
